@@ -13,6 +13,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/rp_widget.h"
 #include "base/timer.h"
 #include "base/object_ptr.h"
+#include "logs.h"
 
 namespace Ui {
 class PopupMenu;
@@ -157,6 +158,7 @@ private:
 	void updateFiltered(bool resetScroll = false);
 	void recount(bool resetScroll = false);
 	StickerRows getStickerSuggestions();
+	StickerRows getStickersSelect();
 
 	const not_null<Window::SessionController*> _controller;
 	QPixmap _cache;

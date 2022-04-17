@@ -1200,8 +1200,11 @@ void ComposeControls::checkAutocomplete() {
 			&& peer->isUser()
 			&& !peer->asUser()->isBot()) {
 			return;
+		} else if (autocomplete.query[0] == '!') {
+			LOG(("********checkAutocomplete if '!'"));
 		}
 	}
+
 	_autocomplete->showFiltered(
 		peer,
 		autocomplete.query,

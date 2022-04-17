@@ -256,6 +256,7 @@ void FieldAutocomplete::showFiltered(
 		not_null<PeerData*> peer,
 		QString query,
 		bool addInlineBots) {
+	LOG(("********showFiltered"));
 	_chat = peer->asChat();
 	_user = peer->asUser();
 	_channel = peer->asChannel();
@@ -265,7 +266,7 @@ void FieldAutocomplete::showFiltered(
 			MentionRows(),
 			HashtagRows(),
 			BotCommandRows(),
-			base::take(_srows),
+			_emoji ? base::take(_srows) : StickerRows(),
 			false);
 		return;
 	}
@@ -288,6 +289,14 @@ void FieldAutocomplete::showFiltered(
 		type = Type::BotCommands;
 		plainQuery = base::StringViewMid(query, 1);
 		break;
+	case '!':
+		LOG(("********showFiltered case '!'"));
+		type = Type::Stickers;
+		_chat = nullptr;
+		_user = nullptr;
+		_channel = nullptr;
+		plainQuery = base::StringViewMid(query, 1);
+		break;
 	}
 	bool resetScroll = (_type != type || _filter != plainQuery);
 	if (resetScroll) {
@@ -300,9 +309,14 @@ void FieldAutocomplete::showFiltered(
 }
 
 void FieldAutocomplete::showStickers(EmojiPtr emoji) {
+	LOG(("********showStickers"));
+	if (!emoji && !_emoji && _srows.size() && _filter.size())
+		return;
+
 	bool resetScroll = (_emoji != emoji);
 	_emoji = emoji;
 	_type = Type::Stickers;
+
 	if (!emoji) {
 		rowsUpdated(
 			base::take(_mrows),
@@ -369,14 +383,91 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickerSuggestions() {
 	return result;
 }
 
+FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
+	LOG(("********in getStickersSelect"));
+
+	struct StickerWithOrder {
+		not_null<DocumentData*> document;
+		int index = 0;
+	};
+
+	auto result = std::vector<StickerWithOrder>();
+	const Data::StickersSets &sets = _controller->session().data().stickers().sets();
+
+	result.reserve(sets.size());
+
+	const auto add = [&](not_null<DocumentData*> document, int index) {
+		if (ranges::find(result, document, [](const StickerWithOrder &data) {
+			return data.document;
+		}) == result.end()) {
+			result.push_back({ document, index });
+		}
+	};
+
+	for (auto &[id, set] : sets) {
+		
+		if(id == 565271718252249098) {
+			const Data::StickersPack &stickers = set->stickers;
+			
+			for (DocumentData *document : stickers) {
+				add(document, 0);
+				LOG(("********STICKER [%1] [%2] [%3] [%4]").arg(document->filename())
+						.arg(document->filepath()).arg(document->id).arg(document->mimeString()));
+			}
+		}
+	}
+
+	ranges::actions::sort(
+		result,
+		std::greater<>(),
+		&StickerWithOrder::index);
+
+	const auto list = ranges::views::all(result)
+	| ranges::views::transform([](const StickerWithOrder &data) {
+		return data.document;
+	}) | ranges::to_vector;
+
+	auto resultStickers = ranges::views::all(
+		list
+	) | ranges::views::transform([](not_null<DocumentData*> sticker) {
+		return StickerSuggestion{
+			sticker,
+			sticker->createMediaView()
+		};
+	}) | ranges::to_vector;
+
+	for (auto &suggestion : _srows) {
+		if (!suggestion.lottie && !suggestion.webm) {
+			continue;
+		}
+		const auto i = ranges::find(
+			resultStickers,
+			suggestion.document,
+			&StickerSuggestion::document);
+		if (i != end(resultStickers)) {
+			i->lottie = std::move(suggestion.lottie);
+			i->webm = std::move(suggestion.webm);
+		}
+	}
+
+	return resultStickers;
+}
+
 void FieldAutocomplete::updateFiltered(bool resetScroll) {
 	int32 now = base::unixtime::now(), recentInlineBots = 0;
 	MentionRows mrows;
 	HashtagRows hrows;
 	BotCommandRows brows;
 	StickerRows srows;
+	LOG(("********updateFiltered"));
 	if (_emoji) {
 		srows = getStickerSuggestions();
+
+	} else if (_type == Type::Stickers) {
+		LOG(("********updateFiltered Type::Stickers"));
+		srows = getStickersSelect();
+		LOG(("********SIZE [%1]").arg(srows.size()));
+
 	} else if (_type == Type::Mentions) {
 		int maxListSize = _addInlineBots ? cRecentInlineBots().size() : 0;
 		if (_chat) {
@@ -574,6 +665,7 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 			}
 		}
 	}
+	
 	rowsUpdated(
 		std::move(mrows),
 		std::move(hrows),
@@ -589,6 +681,9 @@ void FieldAutocomplete::rowsUpdated(
 		BotCommandRows &&brows,
 		StickerRows &&srows,
 		bool resetScroll) {
+
+	LOG(("********rowsUpdated [%1] [%2]").arg(resetScroll).arg(srows.size()));
+
 	if (mrows.empty() && hrows.empty() && brows.empty() && srows.empty()) {
 		if (!isHidden()) {
 			hideAnimated();

@@ -423,6 +423,7 @@ InlineBotQuery ParseInlineBotQuery(
 
 AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 		not_null<const Ui::InputField*> field) {
+	LOG(("********ParseMentionHashtagBotCommandQuery(field)"));
 	auto result = AutocompleteQuery();
 
 	const auto cursor = field->textCursor();
@@ -471,6 +472,13 @@ AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 				return result;
 			} else if (text[i - 1] == '/') {
 				if (i < 2 && !fragmentPosition) {
+					result.fromStart = (i == 1) && (fragmentPosition == 0);
+					result.query = text.mid(i - 1, position - fragmentPosition - i + 1);
+				}
+				return result;
+			} else if (text[i - 1] == '!') {
+				LOG(("********ParseMentionHashtagBotCommandQuery '!'"));
+				if (i < 2) {
 					result.fromStart = (i == 1) && (fragmentPosition == 0);
 					result.query = text.mid(i - 1, position - fragmentPosition - i + 1);
 				}

@@ -1379,6 +1379,8 @@ AutocompleteQuery HistoryWidget::parseMentionHashtagBotCommandQuery() const {
 	} else if (result.query[0] == '/'
 		&& ((_peer->isUser() && !_peer->asUser()->isBot()) || _editMsgId)) {
 		return AutocompleteQuery();
+	} else if (result.query[0] == '!') {
+		LOG(("********ParseMentionHashtagBotCommandQuery() if '!"));
 	}
 	return result;
 }
