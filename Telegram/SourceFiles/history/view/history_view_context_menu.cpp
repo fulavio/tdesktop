@@ -37,6 +37,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/delete_messages_box.h"
 #include "boxes/report_messages_box.h"
 #include "boxes/sticker_set_box.h"
+#include "boxes/keywords/edit_keywords_box.h"
 #include "data/data_photo.h"
 #include "data/data_photo_media.h"
 #include "data/data_document.h"
@@ -62,6 +63,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "facades.h" // LambdaDelayed
 #include "styles/style_chat.h"
 #include "styles/style_menu_icons.h"
+#include "styles/style_settings.h"
 
 #include <QtGui/QGuiApplication>
 #include <QtGui/QClipboard>
@@ -133,6 +135,15 @@ void ToggleFavedSticker(
 		not_null<DocumentData*> document,
 		FullMsgId contextId) {
 	Api::ToggleFavedSticker(controller, document, contextId);
+}
+
+void ShowStickerKeywords(
+		not_null<DocumentData*> document,
+		not_null<ListWidget*> list) {
+	list->controller()->show(Box(
+				EditKeywordsBox,
+				list->controller(),
+				document));
 }
 
 void AddPhotoActions(
@@ -274,6 +285,12 @@ void AddDocumentActions(
 				: tr::lng_context_pack_add(tr::now)),
 			[=] { ShowStickerPackInfo(document, list); },
 			&st::menuIconStickers);
+
+		menu->addAction(
+			(qsl("Sticker Keywords")),
+			[=] { ShowStickerKeywords(document, list); },
+			&st::settingsIconStickers);
+
 		const auto isFaved = document->owner().stickers().isFaved(document);
 		menu->addAction(
 			(isFaved

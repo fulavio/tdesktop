@@ -15,6 +15,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_send.h"
 #include "lang/lang_keys.h"
 #include "ui/boxes/confirm_box.h"
+#include "boxes/keywords/edit_keywords_box.h"
 #include "core/application.h"
 #include "mtproto/sender.h"
 #include "storage/storage_account.h"
@@ -46,6 +47,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_info.h"
 #include "styles/style_menu_icons.h"
+#include "styles/style_settings.h"
 
 #include <QtWidgets/QApplication>
 #include <QtGui/QClipboard>
@@ -765,6 +767,15 @@ void StickerSetBox::Inner::contextMenuEvent(QContextMenuEvent *e) {
 		SendMenu::DefaultScheduleCallback(this, type, sendSelected));
 
 	const auto controller = _controller;
+	const auto showStickerKeywords = [=] {
+		_controller->window().show(Box(
+				EditKeywordsBox,
+				_controller,
+				document));
+	};
+
+	_menu->addAction((qsl("Sticker Keywords")), showStickerKeywords, &st::settingsIconStickers);
+
 	const auto toggleFavedSticker = [=] {
 		Api::ToggleFavedSticker(
 			controller,

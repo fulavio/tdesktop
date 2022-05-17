@@ -304,6 +304,7 @@ private:
 		not_null<DocumentData*> document);
 	void copyContextImage(not_null<PhotoData*> photo, FullMsgId itemId);
 	void showStickerPackInfo(not_null<DocumentData*> document);
+	void showStickerKeywords(not_null<DocumentData*> document);
 
 	void itemRemoved(not_null<const HistoryItem*> item);
 	void viewRemoved(not_null<const Element*> view);

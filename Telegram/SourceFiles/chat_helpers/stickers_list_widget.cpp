@@ -37,6 +37,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/sticker_set_box.h"
 #include "boxes/stickers_box.h"
 #include "ui/boxes/confirm_box.h"
+#include "boxes/keywords/edit_keywords_box.h"
 #include "window/window_session_controller.h" // GifPauseReason.
 #include "main/main_session.h"
 #include "main/main_session_settings.h"
@@ -46,6 +47,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat_helpers.h"
 #include "styles/style_window.h"
 #include "styles/style_menu_icons.h"
+#include "styles/style_settings.h"
 
 #include <QtWidgets/QApplication>
 
@@ -2559,6 +2561,15 @@ void StickersListWidget::showStickerSetBox(not_null<DocumentData*> document) {
 	}
 }
 
+void StickersListWidget::showStickerKeywords(not_null<DocumentData*> document) {
+	if (document->sticker() && document->sticker()->set) {
+		controller()->show(Box(
+						EditKeywordsBox,
+						controller(),
+						document));
+	}
+}
+
 void StickersListWidget::fillContextMenu(
 		not_null<Ui::PopupMenu*> menu,
 		SendMenu::Type type) {
@@ -2608,6 +2619,10 @@ void StickersListWidget::fillContextMenu(
 		menu->addAction(tr::lng_context_pack_info(tr::now), [=] {
 			showStickerSetBox(document);
 		}, &st::menuIconStickers);
+
+		menu->addAction((qsl("Sticker Keywords")), [=] {
+			showStickerKeywords(document);
+		}, &st::settingsIconStickers);
 
 		if (const auto id = set.id; id == Data::Stickers::RecentSetId) {
 			menu->addAction(tr::lng_recent_stickers_remove(tr::now), [=] {

@@ -45,7 +45,10 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_widgets.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
-#include "data/keywords/data_keywords.h"
+#include "satan/sticker_keywords.h"
+#include "styles/style_settings.h"
+#include "boxes/sticker_set_box.h"
+#include "boxes/keywords/edit_keywords_box.h"
 
 #include <QtWidgets/QApplication>
 
@@ -96,6 +99,9 @@ private:
 	void mouseMoveEvent(QMouseEvent *e) override;
 	void mouseReleaseEvent(QMouseEvent *e) override;
 	void contextMenuEvent(QContextMenuEvent *e) override;
+
+	void showStickerSetBox(int index);
+	void showStickerKeywords(int index);
 
 	QRect selectedRect(int index) const;
 	void updateSelectedRow();
@@ -392,7 +398,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 
 	auto result = std::vector<StickerWithOrder>();
 	const Data::StickersSets &sets = _controller->session().data().stickers().sets();
-	auto stickers = Keywords::Query(_filter, false);
+	auto stickers = StickerKeywords::Query(_filter, false);
 
 	const auto add = [&](not_null<DocumentData*> document, int index) {
 		if (ranges::find(result, document, [](const StickerWithOrder &data) {
@@ -1295,6 +1301,31 @@ void FieldAutocomplete::Inner::mouseReleaseEvent(QMouseEvent *e) {
 	chooseSelected(FieldAutocomplete::ChooseMethod::ByClick);
 }
 
+void FieldAutocomplete::Inner::showStickerSetBox(int index) {
+	if (_srows->empty() || index < 0 || index >= _srows->size())
+		return;
+		
+	const auto document = (*_srows)[index].document;
+
+	if (document->sticker() && document->sticker()->set) {
+		StickerSetBox::Show(_controller, document);
+	}
+}
+
+void FieldAutocomplete::Inner::showStickerKeywords(int index) {
+	if (_srows->empty() || index < 0 || index >= _srows->size())
+		return;
+
+	const auto document = (*_srows)[index].document;
+
+	if (document->sticker() && document->sticker()->set) {
+		_controller->show(Box(
+						EditKeywordsBox,
+						_controller,
+						document));
+	}
+}
+
 void FieldAutocomplete::Inner::contextMenuEvent(QContextMenuEvent *e) {
 	if (_sel < 0 || _srows->empty() || _down >= 0) {
 		return;
@@ -1316,6 +1347,14 @@ void FieldAutocomplete::Inner::contextMenuEvent(QContextMenuEvent *e) {
 		type,
 		SendMenu::DefaultSilentCallback(send),
 		SendMenu::DefaultScheduleCallback(this, type, send));
+
+	_menu->addAction(tr::lng_context_pack_info(tr::now), [=] {
+		showStickerSetBox(index);
+	}, &st::menuIconStickers);
+
+	_menu->addAction((qsl("Sticker Keywords")), [=] {
+		showStickerKeywords(index);
+	}, &st::settingsIconStickers);
 
 	if (!_menu->empty()) {
 		_menu->popup(QCursor::pos());

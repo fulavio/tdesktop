@@ -320,6 +320,7 @@ private:
 	void refreshFooterIcons();
 
 	void showStickerSetBox(not_null<DocumentData*> document);
+	void showStickerKeywords(not_null<DocumentData*> document);
 
 	void cancelSetsSearch();
 	void showSearchResults();

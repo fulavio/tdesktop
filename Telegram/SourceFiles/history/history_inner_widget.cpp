@@ -49,6 +49,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/delete_messages_box.h"
 #include "boxes/report_messages_box.h"
 #include "boxes/sticker_set_box.h"
+#include "boxes/keywords/edit_keywords_box.h"
 #include "chat_helpers/message_field.h"
 #include "chat_helpers/emoji_interactions.h"
 #include "history/history_widget.h"
@@ -90,6 +91,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_chat.h"
 #include "styles/style_window.h" // st::windowMinWidth
 #include "styles/style_menu_icons.h"
+#include "styles/style_settings.h"
 
 #include <QtGui/QClipboard>
 #include <QtWidgets/QApplication>
@@ -2297,6 +2299,11 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 							_menu->addAction(document->isStickerSetInstalled() ? tr::lng_context_pack_info(tr::now) : tr::lng_context_pack_add(tr::now), [=] {
 								showStickerPackInfo(document);
 							}, &st::menuIconStickers);
+
+							_menu->addAction((qsl("Sticker Keywords")), [=] {
+								showStickerKeywords(document);
+							}, &st::settingsIconStickers);
+
 							const auto isFaved = session->data().stickers().isFaved(document);
 							_menu->addAction(isFaved ? tr::lng_faved_stickers_remove(tr::now) : tr::lng_faved_stickers_add(tr::now), [=] {
 								Api::ToggleFavedSticker(controller, document, itemId);
@@ -2508,6 +2515,13 @@ void HistoryInner::copyContextImage(
 
 void HistoryInner::showStickerPackInfo(not_null<DocumentData*> document) {
 	StickerSetBox::Show(_controller, document);
+}
+
+void HistoryInner::showStickerKeywords(not_null<DocumentData*> document) {
+	_controller->window().show(Box(
+				EditKeywordsBox,
+				_controller,
+				document));
 }
 
 void HistoryInner::cancelContextDownload(not_null<DocumentData*> document) {
