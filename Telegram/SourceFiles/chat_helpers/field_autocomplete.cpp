@@ -261,12 +261,13 @@ void FieldAutocomplete::paintEvent(QPaintEvent *e) {
 
 void FieldAutocomplete::showFiltered(
 		not_null<PeerData*> peer,
+		QString text,
 		QString query,
 		bool addInlineBots) {
 	_chat = peer->asChat();
 	_user = peer->asUser();
 	_channel = peer->asChannel();
-	if (query.isEmpty()) {
+	if (text.isEmpty() && query.isEmpty()) {
 		_type = Type::Mentions;
 		rowsUpdated(
 			MentionRows(),
@@ -280,29 +281,33 @@ void FieldAutocomplete::showFiltered(
 	_emoji = nullptr;
 
 	query = query.toLower();
-	auto type = Type::Stickers;
-	auto plainQuery = QStringView(query);
-	switch (query.at(0).unicode()) {
-	case '@':
-		type = Type::Mentions;
-		plainQuery = base::StringViewMid(query, 1);
-		break;
-	case '#':
-		type = Type::Hashtags;
-		plainQuery = base::StringViewMid(query, 1);
-		break;
-	case '/':
-		type = Type::BotCommands;
-		plainQuery = base::StringViewMid(query, 1);
-		break;
-	case '!':
-		type = Type::Stickers;
-		_chat = nullptr;
-		_user = nullptr;
-		_channel = nullptr;
-		plainQuery = base::StringViewMid(query, 1);
-		break;
+	auto type = Type::Text;
+	auto plainQuery = QStringView(text);
+
+	if (!query.isEmpty()) {
+		switch (query.at(0).unicode()) {
+		case '@':
+			type = Type::Mentions;
+			plainQuery = base::StringViewMid(query, 1);
+			break;
+		case '#':
+			type = Type::Hashtags;
+			plainQuery = base::StringViewMid(query, 1);
+			break;
+		case '/':
+			type = Type::BotCommands;
+			plainQuery = base::StringViewMid(query, 1);
+			break;
+		case '!':
+			type = Type::Stickers;
+			_chat = nullptr;
+			_user = nullptr;
+			_channel = nullptr;
+			plainQuery = base::StringViewMid(query, 1);
+			break;
+		}
 	}
+
 	bool resetScroll = (_type != type || _filter != plainQuery);
 	if (resetScroll) {
 		_type = type;
@@ -388,7 +393,9 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickerSuggestions() {
 }
 
 FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
-	if (_filter.isEmpty())
+	bool noPrefix = false;
+
+	if ((_type == Type::Text && noPrefix) || _filter.isEmpty())
 		return StickerRows();
 
 	struct StickerWithOrder {
@@ -453,7 +460,7 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 	if (_emoji) {
 		srows = getStickerSuggestions();
 
-	} else if (_type == Type::Stickers) {
+	} else if (_type == Type::Stickers || _type == Type::Text) {
 		srows = getStickersSelect();
 
 	} else if (_type == Type::Mentions) {

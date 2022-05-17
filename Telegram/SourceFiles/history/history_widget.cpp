@@ -1379,8 +1379,6 @@ AutocompleteQuery HistoryWidget::parseMentionHashtagBotCommandQuery() const {
 	} else if (result.query[0] == '/'
 		&& ((_peer->isUser() && !_peer->asUser()->isBot()) || _editMsgId)) {
 		return AutocompleteQuery();
-	} else if (result.query[0] == '!') {
-		LOG(("********ParseMentionHashtagBotCommandQuery() if '!"));
 	}
 	return result;
 }
@@ -4445,7 +4443,7 @@ bool HistoryWidget::updateCmdStartShown() {
 			} else if (!_fieldAutocomplete->isHidden()) {
 				_fieldAutocomplete->hideAnimated();
 			} else {
-				_fieldAutocomplete->showFiltered(_peer, "/", true);
+				_fieldAutocomplete->showFiltered(_peer, "", "/", true);
 			}
 		});
 		_botMenuButton->widthValue(
@@ -4856,6 +4854,7 @@ void HistoryWidget::checkFieldAutocomplete() {
 	const auto autocomplete = parseMentionHashtagBotCommandQuery();
 	_fieldAutocomplete->showFiltered(
 		_peer,
+		autocomplete.text,
 		autocomplete.query,
 		autocomplete.fromStart);
 }

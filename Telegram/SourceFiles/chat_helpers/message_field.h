@@ -71,6 +71,7 @@ InlineBotQuery ParseInlineBotQuery(
 struct AutocompleteQuery {
 	QString query;
 	bool fromStart = false;
+	QString text;
 };
 AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 	not_null<const Ui::InputField*> field);

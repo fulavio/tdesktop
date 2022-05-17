@@ -433,6 +433,10 @@ AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 	const auto position = cursor.position();
 	const auto document = field->document();
 	const auto block = document->findBlock(position);
+
+	if (block.lineCount() == 1)
+		result.text = field->getLastText();
+
 	for (auto item = block.begin(); !item.atEnd(); ++item) {
 		const auto fragment = item.fragment();
 		if (!fragment.isValid()) {

@@ -52,6 +52,7 @@ public:
 	bool clearFilteredBotCommands();
 	void showFiltered(
 		not_null<PeerData*> peer,
+		QString text,
 		QString query,
 		bool addInlineBots);
 	void showStickers(EmojiPtr emoji);
@@ -95,6 +96,7 @@ public:
 		Hashtags,
 		BotCommands,
 		Stickers,
+		Text
 	};
 
 	bool chooseSelected(ChooseMethod method) const;
