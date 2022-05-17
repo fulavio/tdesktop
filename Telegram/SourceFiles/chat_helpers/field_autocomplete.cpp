@@ -45,7 +45,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_widgets.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
-#include "satan/sticker_keywords.h"
+#include "data/keywords/data_keywords.h"
 #include "styles/style_settings.h"
 #include "boxes/sticker_set_box.h"
 #include "boxes/keywords/edit_keywords_box.h"
@@ -397,30 +397,19 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 	};
 
 	auto result = std::vector<StickerWithOrder>();
-	const Data::StickersSets &sets = _controller->session().data().stickers().sets();
-	auto stickers = StickerKeywords::Query(_filter, false);
-
-	const auto add = [&](not_null<DocumentData*> document, int index) {
-		if (ranges::find(result, document, [](const StickerWithOrder &data) {
-			return data.document;
-		}) == result.end()) {
-			result.push_back({ document, index });
-		}
-	};
+	auto stickers = Keywords::Query(_filter, false);
 
 	for (auto sticker : stickers) {
-		auto it = sets.find(sticker.id);
+		const auto document = _controller->session().data().document(sticker.id);
 
-		if (it == sets.cend()) {
+		if (!document) {
 			continue;
 		}
 
-		const auto set = it->second.get();
-		
-		for (DocumentData *document : set->stickers) {
-			if (document->id == sticker.id) {
-				add(document, sticker.count);
-			}
+		if (ranges::find(result, document, [](const StickerWithOrder &data) {
+			return data.document;
+		}) == result.end()) {
+			result.push_back({ document, sticker.count });
 		}
 	}
 
@@ -1203,6 +1192,7 @@ bool FieldAutocomplete::Inner::chooseAtIndex(
 			};
 
 			_stickerChosen.fire({ document, options, method, from() });
+			Keywords::SetKeywordCount(_parent->filter(), document);
 			return true;
 		}
 	} else if (!_mrows->empty()) {
