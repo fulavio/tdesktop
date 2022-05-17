@@ -24,6 +24,7 @@ void SetupConnectionType(
 	not_null<::Main::Account*> account,
 	not_null<Ui::VerticalLayout*> container);
 bool HasUpdate();
+void SetupExperimental(not_null<Ui::VerticalLayout*> container, Fn<void(Type)> showOther);
 void SetupUpdate(
 	not_null<Ui::VerticalLayout*> container,
 	Fn<void(Type)> showOther);

@@ -86,6 +86,25 @@ bool HasUpdate() {
 	return !Core::UpdaterDisabled();
 }
 
+void SetupExperimental(
+		not_null<Ui::VerticalLayout*> container,
+		Fn<void(Type)> showOther) {
+	if (showOther) {
+		const auto experimental = container->add(
+			object_ptr<Ui::SlideWrap<Button>>(
+				container,
+				CreateButton(
+					container,
+					tr::lng_settings_experimental(),
+					st::settingsButtonNoIcon)));
+
+		experimental->toggle(true, anim::type::instant);
+		experimental->entity()->setClickedCallback([=] {
+			showOther(Experimental::Id());
+		});
+	}
+}
+
 void SetupUpdate(
 		not_null<Ui::VerticalLayout*> container,
 		Fn<void(Type)> showOther) {
@@ -119,24 +138,6 @@ void SetupUpdate(
 		inner,
 		tr::lng_settings_install_beta(),
 		st::settingsButtonNoIcon).get();
-
-	if (showOther) {
-		const auto experimental = inner->add(
-			object_ptr<Ui::SlideWrap<Button>>(
-				inner,
-				CreateButton(
-					inner,
-					tr::lng_settings_experimental(),
-					st::settingsButtonNoIcon)));
-		if (!install) {
-			experimental->toggle(true, anim::type::instant);
-		} else {
-			experimental->toggleOn(install->toggledValue());
-		}
-		experimental->entity()->setClickedCallback([=] {
-			showOther(Experimental::Id());
-		});
-	}
 
 	const auto check = AddButton(
 		inner,
@@ -805,6 +806,10 @@ void Advanced::setupContent(not_null<Window::SessionController*> controller) {
 	AddDivider(content);
 	AddSkip(content);
 	SetupExport(controller, content);
+	AddSkip(content);
+	SetupExperimental(content, [=](Type type) {
+		_showOther.fire_copy(type);
+	});
 
 	Ui::ResizeFitChild(this, content);
 }
