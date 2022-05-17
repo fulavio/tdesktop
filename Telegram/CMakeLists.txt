@@ -173,6 +173,8 @@ PRIVATE
     boxes/filters/edit_filter_box.h
     boxes/filters/edit_filter_chats_list.cpp
     boxes/filters/edit_filter_chats_list.h
+    boxes/keywords/edit_keywords_box.cpp
+    boxes/keywords/edit_keywords_box.h
     boxes/peers/add_bot_to_chat_box.cpp
     boxes/peers/add_bot_to_chat_box.h
     boxes/peers/add_participants_box.cpp
