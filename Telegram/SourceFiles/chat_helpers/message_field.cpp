@@ -423,7 +423,6 @@ InlineBotQuery ParseInlineBotQuery(
 
 AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 		not_null<const Ui::InputField*> field) {
-	LOG(("********ParseMentionHashtagBotCommandQuery(field)"));
 	auto result = AutocompleteQuery();
 
 	const auto cursor = field->textCursor();
@@ -453,6 +452,13 @@ AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 
 		bool mentionInCommand = false;
 		const auto text = fragment.text();
+
+		if (text[0] == '!' && fragmentPosition == 0) {
+			result.query = text;
+			result.fromStart = false;
+			return result;
+		}
+
 		for (auto i = position - fragmentPosition; i != 0; --i) {
 			if (text[i - 1] == '@') {
 				if ((position - fragmentPosition - i < 1 || text[i].isLetter()) && (i < 2 || !(text[i - 2].isLetterOrNumber() || text[i - 2] == '_'))) {
@@ -472,13 +478,6 @@ AutocompleteQuery ParseMentionHashtagBotCommandQuery(
 				return result;
 			} else if (text[i - 1] == '/') {
 				if (i < 2 && !fragmentPosition) {
-					result.fromStart = (i == 1) && (fragmentPosition == 0);
-					result.query = text.mid(i - 1, position - fragmentPosition - i + 1);
-				}
-				return result;
-			} else if (text[i - 1] == '!') {
-				LOG(("********ParseMentionHashtagBotCommandQuery '!'"));
-				if (i < 2) {
 					result.fromStart = (i == 1) && (fragmentPosition == 0);
 					result.query = text.mid(i - 1, position - fragmentPosition - i + 1);
 				}

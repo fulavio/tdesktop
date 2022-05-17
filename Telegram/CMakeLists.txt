@@ -415,6 +415,8 @@ PRIVATE
     core/version.h
     countries/countries_manager.cpp
     countries/countries_manager.h
+    data/keywords/data_keywords.cpp
+    data/keywords/data_keywords.h
     data/notify/data_notify_settings.cpp
     data/notify/data_notify_settings.h
     data/notify/data_peer_notify_settings.cpp

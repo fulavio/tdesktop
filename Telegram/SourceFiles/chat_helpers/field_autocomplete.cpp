@@ -45,6 +45,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_widgets.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
+#include "data/keywords/data_keywords.h"
 
 #include <QtWidgets/QApplication>
 
@@ -256,7 +257,6 @@ void FieldAutocomplete::showFiltered(
 		not_null<PeerData*> peer,
 		QString query,
 		bool addInlineBots) {
-	LOG(("********showFiltered"));
 	_chat = peer->asChat();
 	_user = peer->asUser();
 	_channel = peer->asChannel();
@@ -290,7 +290,6 @@ void FieldAutocomplete::showFiltered(
 		plainQuery = base::StringViewMid(query, 1);
 		break;
 	case '!':
-		LOG(("********showFiltered case '!'"));
 		type = Type::Stickers;
 		_chat = nullptr;
 		_user = nullptr;
@@ -309,7 +308,6 @@ void FieldAutocomplete::showFiltered(
 }
 
 void FieldAutocomplete::showStickers(EmojiPtr emoji) {
-	LOG(("********showStickers"));
 	if (!emoji && !_emoji && _srows.size() && _filter.size())
 		return;
 
@@ -384,7 +382,8 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickerSuggestions() {
 }
 
 FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
-	LOG(("********in getStickersSelect"));
+	if (_filter.isEmpty())
+		return StickerRows();
 
 	struct StickerWithOrder {
 		not_null<DocumentData*> document;
@@ -393,8 +392,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 
 	auto result = std::vector<StickerWithOrder>();
 	const Data::StickersSets &sets = _controller->session().data().stickers().sets();
-
-	result.reserve(sets.size());
+	auto stickers = Keywords::Query(_filter, false);
 
 	const auto add = [&](not_null<DocumentData*> document, int index) {
 		if (ranges::find(result, document, [](const StickerWithOrder &data) {
@@ -404,15 +402,18 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 		}
 	};
 
-	for (auto &[id, set] : sets) {
+	for (auto sticker : stickers) {
+		auto it = sets.find(sticker.id);
+
+		if (it == sets.cend()) {
+			continue;
+		}
+
+		const auto set = it->second.get();
 		
-		if(id == 565271718252249098) {
-			const Data::StickersPack &stickers = set->stickers;
-			
-			for (DocumentData *document : stickers) {
-				add(document, 0);
-				LOG(("********STICKER [%1] [%2] [%3] [%4]").arg(document->filename())
-						.arg(document->filepath()).arg(document->id).arg(document->mimeString()));
+		for (DocumentData *document : set->stickers) {
+			if (document->id == sticker.id) {
+				add(document, sticker.count);
 			}
 		}
 	}
@@ -422,17 +423,12 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 		std::greater<>(),
 		&StickerWithOrder::index);
 
-	const auto list = ranges::views::all(result)
-	| ranges::views::transform([](const StickerWithOrder &data) {
-		return data.document;
-	}) | ranges::to_vector;
-
-	auto resultStickers = ranges::views::all(
-		list
-	) | ranges::views::transform([](not_null<DocumentData*> sticker) {
+	auto list = ranges::views::all(
+		result
+	) | ranges::views::transform([](const StickerWithOrder &data) {
 		return StickerSuggestion{
-			sticker,
-			sticker->createMediaView()
+			data.document,
+			data.document->createMediaView()
 		};
 	}) | ranges::to_vector;
 
@@ -441,16 +437,16 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 			continue;
 		}
 		const auto i = ranges::find(
-			resultStickers,
+			list,
 			suggestion.document,
 			&StickerSuggestion::document);
-		if (i != end(resultStickers)) {
+		if (i != end(list)) {
 			i->lottie = std::move(suggestion.lottie);
 			i->webm = std::move(suggestion.webm);
 		}
 	}
 
-	return resultStickers;
+	return list;
 }
 
 void FieldAutocomplete::updateFiltered(bool resetScroll) {
@@ -459,14 +455,11 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 	HashtagRows hrows;
 	BotCommandRows brows;
 	StickerRows srows;
-	LOG(("********updateFiltered"));
 	if (_emoji) {
 		srows = getStickerSuggestions();
 
 	} else if (_type == Type::Stickers) {
-		LOG(("********updateFiltered Type::Stickers"));
 		srows = getStickersSelect();
-		LOG(("********SIZE [%1]").arg(srows.size()));
 
 	} else if (_type == Type::Mentions) {
 		int maxListSize = _addInlineBots ? cRecentInlineBots().size() : 0;
@@ -682,7 +675,6 @@ void FieldAutocomplete::rowsUpdated(
 		StickerRows &&srows,
 		bool resetScroll) {
 
-	LOG(("********rowsUpdated [%1] [%2]").arg(resetScroll).arg(srows.size()));
 
 	if (mrows.empty() && hrows.empty() && brows.empty() && srows.empty()) {
 		if (!isHidden()) {

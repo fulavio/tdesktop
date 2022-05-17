@@ -88,6 +88,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/connection_box.h"
 #include "boxes/premium_limits_box.h"
 #include "ui/boxes/confirm_box.h"
+#include "boxes/share_box.h"
+#include "data/keywords/data_keywords.h"
 
 #include <QtCore/QMimeDatabase>
 #include <QtGui/QGuiApplication>
@@ -181,6 +183,7 @@ Application::~Application() {
 	}
 
 	// Depend on primaryWindow() for now :(
+	Keywords::Finish();
 	Shortcuts::Finish();
 
 	_secondaryWindows.clear();
@@ -372,6 +375,8 @@ void Application::run() {
 			[[maybe_unused]] const auto countriesCopy = countries;
 		});
 	}
+
+	Keywords::Start();
 }
 
 void Application::showOpenGLCrashNotification() {
