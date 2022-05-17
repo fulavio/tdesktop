@@ -439,7 +439,7 @@ HistoryWidget::HistoryWidget(
 		if (!_history) {
 			return;
 		}
-		if (type == FieldAutocomplete::Type::Stickers) {
+		if (type == FieldAutocomplete::Type::Stickers && !FAOptions::hideChoosingSticker()) {
 			session().sendProgressManager().update(
 				_history,
 				Api::SendProgressType::ChooseSticker);
@@ -1088,7 +1088,7 @@ void HistoryWidget::initTabbedSelector() {
 			return;
 		}
 		const auto type = Api::SendProgressType::ChooseSticker;
-		if (data != Selector::Action::Cancel) {
+		if (data != Selector::Action::Cancel && !FAOptions::hideChoosingSticker()) {
 			session().sendProgressManager().update(_history, type);
 		} else {
 			session().sendProgressManager().cancel(_history, type);

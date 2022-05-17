@@ -39,6 +39,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/unixtime.h"
 #include "base/random.h"
 #include "base/qt/qt_common_adapters.h"
+#include "base/options.h"
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
 #include "styles/style_chat.h"
@@ -51,6 +52,42 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "boxes/keywords/edit_keywords_box.h"
 
 #include <QtWidgets/QApplication>
+
+namespace FAOptions {
+
+const char kOptionStickerSendOnEnter[] = "sticker-send-on-enter";
+const char kOptionHideChoosingSticker[] = "hide-choosing-sticker";
+const char kOptionStickerKeywordsPrefix[] = "sticker-keywords-prefix";
+
+base::options::toggle StickerSendOnEnter({
+    .id = kOptionStickerSendOnEnter,
+    .name = "Send sticker on enter",
+    .description = "Enviar o primeiro sticker dos resultados inline ao pressionar enter.",
+});
+
+base::options::toggle HideChoosingSticker({
+    .id = kOptionHideChoosingSticker,
+    .name = "Hide Choosing sticker action",
+    .description = "Esconde ação de escolhendo um sticker para os contatos.",
+});
+
+base::options::toggle StickerKeywordsPrefix({
+    .id = kOptionStickerKeywordsPrefix,
+    .name = "Allow sugesting stickers without prefix",
+    .description = "Permite a sugestão/busca de stickers sem utilizar o prefixo '!'",
+});
+
+bool stickerSendOnEnter() {
+	return StickerSendOnEnter.value();
+}
+bool hideChoosingSticker() {
+	return HideChoosingSticker.value();
+}
+bool stickerKeywordsPrefix() {
+	return StickerKeywordsPrefix.value();
+}
+
+} // namespace FAOptions
 
 class FieldAutocomplete::Inner final : public Ui::RpWidget {
 public:
@@ -69,6 +106,7 @@ public:
 
 	void clearSel(bool hidden = false);
 	bool moveSel(int key);
+	void selFirst();
 	bool chooseSelected(FieldAutocomplete::ChooseMethod method) const;
 	bool chooseAtIndex(
 		FieldAutocomplete::ChooseMethod method,
@@ -393,9 +431,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickerSuggestions() {
 }
 
 FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
-	bool noPrefix = false;
-
-	if ((_type == Type::Text && noPrefix) || _filter.isEmpty())
+	if ((_type == Type::Text && !FAOptions::stickerKeywordsPrefix()) || _filter.isEmpty())
 		return StickerRows();
 
 	struct StickerWithOrder {
@@ -740,7 +776,14 @@ void FieldAutocomplete::recount(bool resetScroll) {
 	}
 	if (resetScroll) st = 0;
 	if (st != oldst) _scroll->scrollToY(st);
-	if (resetScroll) _inner->clearSel();
+
+	if (resetScroll) {
+		if (FAOptions::stickerSendOnEnter())
+			_inner->selFirst();
+		else {
+			_inner->clearSel();
+		}
+	}
 }
 
 void FieldAutocomplete::hideFast() {
@@ -795,7 +838,8 @@ void FieldAutocomplete::animationCallback() {
 			hideFinish();
 		} else {
 			_scroll->show();
-			_inner->clearSel();
+			if (!FAOptions::stickerSendOnEnter())
+				_inner->clearSel();
 		}
 	}
 }
@@ -1162,6 +1206,10 @@ bool FieldAutocomplete::Inner::moveSel(int key) {
 	}
 	setSel((_sel + direction >= maxSel || _sel + direction < 0) ? -1 : (_sel + direction), true);
 	return true;
+}
+
+void FieldAutocomplete::Inner::selFirst() {
+	setSel(0, true);
 }
 
 bool FieldAutocomplete::Inner::chooseSelected(

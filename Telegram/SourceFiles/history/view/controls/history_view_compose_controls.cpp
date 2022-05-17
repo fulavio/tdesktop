@@ -1504,7 +1504,7 @@ void ComposeControls::initAutocomplete() {
 
 	_autocomplete->choosingProcesses(
 	) | rpl::start_with_next([=](FieldAutocomplete::Type type) {
-		if (type == FieldAutocomplete::Type::Stickers) {
+		if (type == FieldAutocomplete::Type::Stickers && !FAOptions::hideChoosingSticker()) {
 			_sendActionUpdates.fire({
 				.type = Api::SendProgressType::ChooseSticker,
 			});
@@ -1847,6 +1847,9 @@ void ComposeControls::initTabbedSelector() {
 
 	selector->choosingStickerUpdated(
 	) | rpl::start_with_next([=](ChatHelpers::TabbedSelector::Action action) {
+		if (FAOptions::hideChoosingSticker())
+			return;
+
 		_sendActionUpdates.fire({
 			.type = Api::SendProgressType::ChooseSticker,
 			.cancel = (action == ChatHelpers::TabbedSelector::Action::Cancel),

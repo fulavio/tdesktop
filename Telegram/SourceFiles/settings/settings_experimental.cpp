@@ -27,6 +27,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_common.h"
 #include "styles/style_settings.h"
 #include "styles/style_layers.h"
+#include "chat_helpers/field_autocomplete.h"
+#include "data/keywords/data_keywords.h"
 
 namespace Settings {
 namespace {
@@ -141,6 +143,10 @@ void SetupExperimental(
 	addToggle(Settings::kOptionMonoSettingsIcons);
 	addToggle(Webview::kOptionWebviewDebugEnabled);
 	addToggle(kOptionAutoScrollInactiveChat);
+	
+	addToggle(FAOptions::kOptionStickerSendOnEnter);
+	addToggle(FAOptions::kOptionHideChoosingSticker);
+	addToggle(FAOptions::kOptionStickerKeywordsPrefix);
 }
 
 } // namespace
