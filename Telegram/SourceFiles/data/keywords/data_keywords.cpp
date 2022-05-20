@@ -286,15 +286,11 @@ void fill() {
 } // namespace
 
 std::vector<QString> Keywords::GetKeywords(not_null<DocumentData*> document) {
-
 	struct KeywordWithOrder {
 		QString keyword;
 		int count;
 	};
 	auto list = std::vector<KeywordWithOrder>();
-
-	if (!document->sticker())
-		return std::vector<QString>();
 
 	for (const auto [keyword, stickers] : Data) {
 		const auto sticker = ranges::find_if(stickers, [&](const StickerId &id) {
@@ -321,10 +317,6 @@ std::vector<QString> Keywords::GetKeywords(not_null<DocumentData*> document) {
 }
 
 void Keywords::SetKeywords(std::vector<QString> keywords, not_null<DocumentData*> document) {
-
-	if (!document->sticker())
-		return;
-
 	auto original = GetKeywords(document);
 	auto diff = std::vector<QString>();
 

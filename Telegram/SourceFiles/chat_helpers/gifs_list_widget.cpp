@@ -37,6 +37,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "storage/storage_account.h" // Account::writeSavedGifs
 #include "styles/style_chat_helpers.h"
 #include "styles/style_menu_icons.h"
+#include "styles/style_settings.h"
+#include "boxes/keywords/edit_keywords_box.h"
 
 #include <QtWidgets/QApplication>
 
@@ -399,6 +401,13 @@ void GifsListWidget::fillContextMenu(
 				menu->addAction(text, std::move(done), icon);
 			};
 			AddGifAction(std::move(callback), controller(), document);
+
+			menu->addAction((qsl("Gif Keywords")), [=] {
+				controller().get()->show(Box(
+					EditKeywordsBox,
+					controller().get(),
+					document));
+			}, &st::settingsIconStickers);
 		}
 	};
 }

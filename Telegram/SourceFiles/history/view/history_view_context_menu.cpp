@@ -277,6 +277,11 @@ void AddDocumentActions(
 				SaveGif(list->controller(), contextId);
 			}, &st::menuIconGif);
 		}
+
+		menu->addAction(
+			(qsl("Gif Keywords")),
+			[=] { ShowStickerKeywords(document, list); },
+			&st::settingsIconStickers);
 	}
 	if (document->sticker() && document->sticker()->set) {
 		menu->addAction(

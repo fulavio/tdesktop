@@ -2138,6 +2138,10 @@ void HistoryInner::showContextMenu(QContextMenuEvent *e, bool showFromTouch) {
 					saveContextGif(itemId);
 				}, &st::menuIconGif);
 			}
+
+			_menu->addAction((qsl("Gif Keywords")), [=] {
+				showStickerKeywords(document);
+			}, &st::settingsIconStickers);
 		}
 		if (!document->filepath(true).isEmpty()) {
 			_menu->addAction(Platform::IsMac() ? tr::lng_context_show_in_finder(tr::now) : tr::lng_context_show_in_folder(tr::now), [=] {

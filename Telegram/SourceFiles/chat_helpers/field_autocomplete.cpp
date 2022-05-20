@@ -150,6 +150,7 @@ private:
 	QSize stickerBoundingBox() const;
 	void setupLottie(StickerSuggestion &suggestion);
 	void setupWebm(StickerSuggestion &suggestion);
+	void setupGif(StickerSuggestion &suggestion);
 	void repaintSticker(not_null<DocumentData*> document);
 	void repaintStickerAtIndex(int index);
 	std::shared_ptr<Lottie::FrameRenderer> getLottieRenderer();
@@ -198,6 +199,7 @@ struct FieldAutocomplete::StickerSuggestion {
 	std::shared_ptr<Data::DocumentMedia> documentMedia;
 	std::unique_ptr<Lottie::SinglePlayer> lottie;
 	Media::Clip::ReaderPointer webm;
+	Media::Clip::ReaderPointer gif;
 };
 
 FieldAutocomplete::FieldAutocomplete(
@@ -445,7 +447,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 	for (auto sticker : stickers) {
 		const auto document = _controller->session().data().document(sticker.id);
 
-		if (!document) {
+		if (!document || document->isNull()) {
 			continue;
 		}
 
@@ -481,6 +483,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
 		if (i != end(list)) {
 			i->lottie = std::move(suggestion.lottie);
 			i->webm = std::move(suggestion.webm);
+			i->gif = std::move(suggestion.gif);
 		}
 	}
 
@@ -971,17 +974,25 @@ void FieldAutocomplete::Inner::paintEvent(QPaintEvent *e) {
 				int32 index = row * _stickersPerRow + col;
 				if (index >= _srows->size()) break;
 
-				auto &sticker = (*_srows)[index];
-				const auto document = sticker.document;
-				const auto &media = sticker.documentMedia;
-				const auto info = document->sticker();
-				if (!info) continue;
+				auto &suggest = (*_srows)[index];
+				const auto document = suggest.document;
+				const auto &media = suggest.documentMedia;
+				const auto sticker = document->sticker();
 
-				if (media->loaded()) {
-					if (info->isLottie() && !sticker.lottie) {
-						setupLottie(sticker);
-					} else if (info->isWebm() && !sticker.webm) {
-						setupWebm(sticker);
+				if (sticker && media->loaded()) {
+					if (sticker->isLottie() && !suggest.lottie) {
+						setupLottie(suggest);
+					} else if (sticker->isWebm() && !suggest.webm) {
+						setupWebm(suggest);
+					}
+				}
+
+				else if (document->isGifv()) {
+					const auto preview = Data::VideoPreviewState(media.get());
+					preview.automaticLoad(Data::FileOrigin());
+
+					if (preview.loaded() && !suggest.gif && !suggest.gif.isBad() && true) { //CanPlayInline(document)
+						setupGif(suggest);
 					}
 				}
 
@@ -1001,21 +1012,31 @@ void FieldAutocomplete::Inner::paintEvent(QPaintEvent *e) {
 				const auto ppos = pos + QPoint(
 					(st::stickerPanSize.width() - size.width()) / 2,
 					(st::stickerPanSize.height() - size.height()) / 2);
-				if (sticker.lottie && sticker.lottie->ready()) {
-					const auto frame = sticker.lottie->frame();
+
+				if (suggest.lottie && suggest.lottie->ready()) {
+					const auto frame = suggest.lottie->frame();
 					p.drawImage(
 						QRect(ppos, frame.size() / cIntRetinaFactor()),
 						frame);
 					if (!paused) {
-						sticker.lottie->markFrameShown();
+						suggest.lottie->markFrameShown();
 					}
-				} else if (sticker.webm && sticker.webm->started()) {
-					p.drawPixmap(ppos, sticker.webm->current({
+					
+				} else if (suggest.webm && suggest.webm->started()) {
+					p.drawPixmap(ppos, suggest.webm->current({
 						.frame = size,
 						.keepAlpha = true,
 					}, paused ? 0 : now));
+
+				} else if (suggest.gif && suggest.gif->started()) {
+					p.drawPixmap(ppos, suggest.gif->current({
+						.frame = size,
+						.keepAlpha = true,
+					}, paused ? 0 : now));
+
 				} else if (const auto image = media->getStickerSmall()) {
 					p.drawPixmapLeft(ppos, width(), image->pix(size));
+
 				} else {
 					ChatHelpers::PaintStickerThumbnailPath(
 						p,
@@ -1361,14 +1382,10 @@ void FieldAutocomplete::Inner::showStickerKeywords(int index) {
 	if (_srows->empty() || index < 0 || index >= _srows->size())
 		return;
 
-	const auto document = (*_srows)[index].document;
-
-	if (document->sticker() && document->sticker()->set) {
-		_controller->show(Box(
-						EditKeywordsBox,
-						_controller,
-						document));
-	}
+	_controller->show(Box(
+					EditKeywordsBox,
+					_controller,
+					(*_srows)[index].document));
 }
 
 void FieldAutocomplete::Inner::contextMenuEvent(QContextMenuEvent *e) {
@@ -1393,14 +1410,23 @@ void FieldAutocomplete::Inner::contextMenuEvent(QContextMenuEvent *e) {
 		SendMenu::DefaultSilentCallback(send),
 		SendMenu::DefaultScheduleCallback(this, type, send));
 
-	_menu->addAction(tr::lng_context_pack_info(tr::now), [=] {
-		showStickerSetBox(index);
-	}, &st::menuIconStickers);
+	if (!_srows->empty() && index < _srows->size()) {
+		const auto document = (*_srows)[index].document;
 
-	_menu->addAction((qsl("Sticker Keywords")), [=] {
-		showStickerKeywords(index);
-	}, &st::settingsIconStickers);
+		if (document->sticker()) {
+			_menu->addAction(tr::lng_context_pack_info(tr::now), [=] {
+				showStickerSetBox(index);
+			}, &st::menuIconStickers);
+		}
 
+		const auto text = document->isGifv() ?
+				qsl("Gif Keywords") : qsl("Sticker Keywords");
+
+		_menu->addAction(text, [=] {
+			showStickerKeywords(index);
+		}, &st::settingsIconStickers);
+	}
+	
 	if (!_menu->empty()) {
 		_menu->popup(QCursor::pos());
 	}
@@ -1506,6 +1532,27 @@ void FieldAutocomplete::Inner::setupWebm(StickerSuggestion &suggestion) {
 		std::move(callback));
 }
 
+void FieldAutocomplete::Inner::setupGif(StickerSuggestion &suggestion) {
+	const auto document = suggestion.document; 
+	const auto media = suggestion.documentMedia;
+
+	media->thumbnailWanted(Data::FileOrigin());
+	media->videoThumbnailWanted(Data::FileOrigin());
+
+	const auto preview = Data::VideoPreviewState(media.get());
+	preview.automaticLoad(Data::FileOrigin());
+
+	const auto displayLoading = !preview.usingThumbnail() && document->displayLoading();
+	const auto loaded = preview.loaded();
+	const auto loading = preview.loading();
+
+	auto callback = [=](Media::Clip::Notification notification) {
+		clipCallback(notification, document);
+	};
+
+	suggestion.gif = preview.makeAnimation(std::move(callback));
+}
+
 QSize FieldAutocomplete::Inner::stickerBoundingBox() const {
 	return QSize(
 		st::stickerPanSize.width() - st::roundRadiusSmall * 2,
@@ -1544,18 +1591,38 @@ void FieldAutocomplete::Inner::clipCallback(
 	if (i == end(*_srows)) {
 		return;
 	}
+
+	const auto size = ChatHelpers::ComputeStickerSize(
+		document,
+		stickerBoundingBox());
+
 	using namespace Media::Clip;
 	switch (notification) {
 	case Notification::Reinit: {
-		if (!i->webm) {
-			break;
-		} else if (i->webm->state() == State::Error) {
-			i->webm.setBad();
-		} else if (i->webm->ready() && !i->webm->started()) {
-			const auto size = ChatHelpers::ComputeStickerSize(
-				i->document,
-				stickerBoundingBox());
-			i->webm->start({ .frame = size, .keepAlpha = true });
+		if (i->webm) {
+			if (i->webm->state() == State::Error) {
+				i->webm.setBad();
+			} else if (i->webm->ready() && !i->webm->started()) {
+				i->webm->start({ .frame = size, .keepAlpha = true });
+			}
+		}
+
+		else if (i->gif) {
+			if (i->gif->state() == State::Error) {
+				i->gif.setBad();
+			} else if (i->gif->ready() && !i->gif->started()) {
+				if (i->gif->width() * i->gif->height() > 1280 * 720) {
+					document->dimensions = QSize(
+						i->gif->width(),
+						i->gif->height());
+					i->gif.reset();
+				} else {
+					i->gif->start({
+						.frame = size,
+						.keepAlpha = true
+					});
+				}
+			}
 		}
 	} break;
 
@@ -1600,7 +1667,7 @@ void FieldAutocomplete::Inner::selectByMouse(QPoint globalPosition) {
 			_down = _sel;
 			if (_down >= 0 && _down < _srows->size()) {
 				_controller->widget()->showMediaPreview(
-					(*_srows)[_down].document->stickerSetOrigin(),
+					(*_srows)[_down].document->stickerOrGifOrigin(),
 					(*_srows)[_down].document);
 			}
 		}
@@ -1620,7 +1687,7 @@ void FieldAutocomplete::Inner::onParentGeometryChanged() {
 void FieldAutocomplete::Inner::showPreview() {
 	if (_down >= 0 && _down < _srows->size()) {
 		_controller->widget()->showMediaPreview(
-			(*_srows)[_down].document->stickerSetOrigin(),
+			(*_srows)[_down].document->stickerOrGifOrigin(),
 			(*_srows)[_down].document);
 		_previewShown = true;
 	}
