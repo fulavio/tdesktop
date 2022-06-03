@@ -20,7 +20,7 @@ struct StickerData {
 	int count;
 };
 
-std::vector<StickerData> Query(const QString &query, bool exact);
+std::vector<StickerData> Query(const QString &query, bool exact=false);
 std::vector<QString> GetKeywords(not_null<DocumentData*> document);
 void SetKeywords(std::vector<QString> keywords, not_null<DocumentData*> document);
 int SetKeywordCount(const QString &keyword, not_null<DocumentData*> document);

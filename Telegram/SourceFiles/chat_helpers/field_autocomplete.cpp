@@ -50,44 +50,9 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_settings.h"
 #include "boxes/sticker_set_box.h"
 #include "boxes/keywords/edit_keywords_box.h"
+#include "settings/settings_options.h"
 
 #include <QtWidgets/QApplication>
-
-namespace FAOptions {
-
-const char kOptionStickerSendOnEnter[] = "sticker-send-on-enter";
-const char kOptionHideChoosingSticker[] = "hide-choosing-sticker";
-const char kOptionStickerKeywordsPrefix[] = "sticker-keywords-prefix";
-
-base::options::toggle StickerSendOnEnter({
-    .id = kOptionStickerSendOnEnter,
-    .name = "Send sticker on enter",
-    .description = "Enviar o primeiro sticker dos resultados inline ao pressionar enter.",
-});
-
-base::options::toggle HideChoosingSticker({
-    .id = kOptionHideChoosingSticker,
-    .name = "Hide Choosing sticker action",
-    .description = "Esconde ação de escolhendo um sticker para os contatos.",
-});
-
-base::options::toggle StickerKeywordsPrefix({
-    .id = kOptionStickerKeywordsPrefix,
-    .name = "Allow sugesting stickers without prefix",
-    .description = "Permite a sugestão/busca de stickers sem utilizar o prefixo '!'",
-});
-
-bool stickerSendOnEnter() {
-	return StickerSendOnEnter.value();
-}
-bool hideChoosingSticker() {
-	return HideChoosingSticker.value();
-}
-bool stickerKeywordsPrefix() {
-	return StickerKeywordsPrefix.value();
-}
-
-} // namespace FAOptions
 
 class FieldAutocomplete::Inner final : public Ui::RpWidget {
 public:
@@ -359,7 +324,7 @@ void FieldAutocomplete::showFiltered(
 }
 
 void FieldAutocomplete::showStickers(EmojiPtr emoji) {
-	if (!emoji && !_emoji && _srows.size() && _filter.size())
+	if (!_emoji && _srows.size() && _filter.size())
 		return;
 
 	bool resetScroll = (_emoji != emoji);
@@ -433,7 +398,7 @@ FieldAutocomplete::StickerRows FieldAutocomplete::getStickerSuggestions() {
 }
 
 FieldAutocomplete::StickerRows FieldAutocomplete::getStickersSelect() {
-	if ((_type == Type::Text && !FAOptions::stickerKeywordsPrefix()) || _filter.isEmpty())
+	if ((_type == Type::Text && !ExOption::stickerKeywordsPrefix()) || _filter.isEmpty())
 		return StickerRows();
 
 	struct StickerWithOrder {
@@ -781,7 +746,7 @@ void FieldAutocomplete::recount(bool resetScroll) {
 	if (st != oldst) _scroll->scrollToY(st);
 
 	if (resetScroll) {
-		if (FAOptions::stickerSendOnEnter())
+		if (ExOption::stickerSendOnEnter())
 			_inner->selFirst();
 		else {
 			_inner->clearSel();
@@ -841,7 +806,7 @@ void FieldAutocomplete::animationCallback() {
 			hideFinish();
 		} else {
 			_scroll->show();
-			if (!FAOptions::stickerSendOnEnter())
+			if (!ExOption::stickerSendOnEnter())
 				_inner->clearSel();
 		}
 	}

@@ -59,6 +59,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "window/window_adaptive.h"
 #include "window/window_session_controller.h"
 #include "mainwindow.h"
+#include "settings/settings_options.h"
 
 namespace HistoryView {
 namespace {
@@ -1504,7 +1505,7 @@ void ComposeControls::initAutocomplete() {
 
 	_autocomplete->choosingProcesses(
 	) | rpl::start_with_next([=](FieldAutocomplete::Type type) {
-		if (type == FieldAutocomplete::Type::Stickers && !FAOptions::hideChoosingSticker()) {
+		if (type == FieldAutocomplete::Type::Stickers && !ExOption::hideChoosingSticker()) {
 			_sendActionUpdates.fire({
 				.type = Api::SendProgressType::ChooseSticker,
 			});
@@ -1847,7 +1848,7 @@ void ComposeControls::initTabbedSelector() {
 
 	selector->choosingStickerUpdated(
 	) | rpl::start_with_next([=](ChatHelpers::TabbedSelector::Action action) {
-		if (FAOptions::hideChoosingSticker())
+		if (ExOption::hideChoosingSticker())
 			return;
 
 		_sendActionUpdates.fire({

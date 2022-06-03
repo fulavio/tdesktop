@@ -13,7 +13,6 @@ author: fulavio
 #include <range/v3/all.hpp>
 
 namespace Keywords {
-
 namespace {
 
 void WriteKeywordsFile();
@@ -411,7 +410,13 @@ std::vector<StickerData> Keywords::Query(const QString &sQuery, bool exact) {
 	};
 
 	for (const auto [keyword, stickers] : Data) {
-		if (query == "!" || keyword.contains(query, Qt::CaseInsensitive)) {
+		if (exact) {
+			if (keyword.compare(query, Qt::CaseInsensitive) == 0) {
+				add(stickers);
+			}
+		}
+
+		else if (query == "!" || keyword.contains(query, Qt::CaseInsensitive)) {
 			add(stickers);
 		}
 	}

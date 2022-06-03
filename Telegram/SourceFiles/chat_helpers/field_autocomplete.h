@@ -39,16 +39,6 @@ namespace SendMenu {
 enum class Type;
 } // namespace SendMenu
 
-namespace FAOptions {
-extern const char kOptionStickerSendOnEnter[];
-extern const char kOptionHideChoosingSticker[];
-extern const char kOptionStickerKeywordsPrefix[];
-
-bool stickerSendOnEnter();
-bool hideChoosingSticker();
-bool stickerKeywordsPrefix();
-} // namespace FieldAutocompleteOptions
-
 class FieldAutocomplete final : public Ui::RpWidget {
 public:
 	FieldAutocomplete(

@@ -162,6 +162,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "styles/style_profile.h"
 #include "styles/style_chat_helpers.h"
 #include "styles/style_info.h"
+#include "data/keywords/data_keywords.h"
+#include "settings/settings_options.h"
 
 #include <QtGui/QWindow>
 #include <QtCore/QMimeData>
@@ -426,6 +428,7 @@ HistoryWidget::HistoryWidget(
 			data.messageSendingFrom);
 		const auto localId = data.messageSendingFrom.localId;
 		sendExistingDocument(data.sticker, data.options, localId);
+		clearFieldText();
 	}, lifetime());
 
 	_fieldAutocomplete->setModerateKeyActivateCallback([=](int key) {
@@ -439,7 +442,7 @@ HistoryWidget::HistoryWidget(
 		if (!_history) {
 			return;
 		}
-		if (type == FieldAutocomplete::Type::Stickers && !FAOptions::hideChoosingSticker()) {
+		if (type == FieldAutocomplete::Type::Stickers && !ExOption::hideChoosingSticker()) {
 			session().sendProgressManager().update(
 				_history,
 				Api::SendProgressType::ChooseSticker);
@@ -1088,7 +1091,7 @@ void HistoryWidget::initTabbedSelector() {
 			return;
 		}
 		const auto type = Api::SendProgressType::ChooseSticker;
-		if (data != Selector::Action::Cancel && !FAOptions::hideChoosingSticker()) {
+		if (data != Selector::Action::Cancel && !ExOption::hideChoosingSticker()) {
 			session().sendProgressManager().update(_history, type);
 		} else {
 			session().sendProgressManager().cancel(_history, type);
@@ -3764,26 +3767,53 @@ void HistoryWidget::send(Api::SendOptions options) {
 		}
 	}
 
-	session().api().sendMessage(std::move(message));
+	auto sendMsg = true;
 
-	clearFieldText();
-	_saveDraftText = true;
-	_saveDraftStart = crl::now();
-	saveDraft();
+	if (ExOption::replaceKeywords()) {
+		auto documents = Keywords::Query(message.textWithTags.text, true);
 
-	hideSelectorControlsAnimated();
+		if (documents.size()) {
+			ranges::actions::sort(
+				documents,
+				std::greater<>(),
+				&Keywords::StickerData::count);
 
-	if (_previewData && _previewData->pendingTill) previewCancel();
-	_field->setFocus();
+			for (const auto &doc : documents) {
+				const auto document = controller()->session().data().document(doc.id);
 
-	if (!_keyboard->hasMarkup() && _keyboard->forceReply() && !_kbReplyTo) {
-		toggleKeyboard();
+				if (document && !document->isNull()) {
+					sendExistingDocument(document, options);
+					clearFieldText();
+					sendMsg = false;
+					break;
+				}
+			}
+		}
 	}
-	session().changes().historyUpdated(
-		_history,
-		(options.scheduled
-			? Data::HistoryUpdate::Flag::ScheduledSent
-			: Data::HistoryUpdate::Flag::MessageSent));
+
+	if (sendMsg) {
+		session().api().sendMessage(std::move(message));
+
+		clearFieldText();
+		_saveDraftText = true;
+		_saveDraftStart = crl::now();
+		saveDraft();
+
+		hideSelectorControlsAnimated();
+
+		if (_previewData && _previewData->pendingTill) previewCancel();
+		_field->setFocus();
+
+		if (!_keyboard->hasMarkup() && _keyboard->forceReply() && !_kbReplyTo) {
+			toggleKeyboard();
+		}
+		session().changes().historyUpdated(
+			_history,
+			(options.scheduled
+				? Data::HistoryUpdate::Flag::ScheduledSent
+				: Data::HistoryUpdate::Flag::MessageSent));
+	}
+
 }
 
 void HistoryWidget::sendWithModifiers(Qt::KeyboardModifiers modifiers) {
