@@ -10,6 +10,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "settings/settings_common.h"
 #include "settings/settings_chat.h"
 #include "settings/settings_experimental.h"
+#include "settings/settings_options.h"
 #include "ui/wrap/vertical_layout.h"
 #include "ui/wrap/slide_wrap.h"
 #include "ui/widgets/labels.h"
@@ -96,11 +97,32 @@ void SetupExperimental(
 				CreateButton(
 					container,
 					tr::lng_settings_experimental(),
-					st::settingsButtonNoIcon)));
+					st::settingsButton,
+					{&st::settingsIconSettings, kIconGray})));
 
 		experimental->toggle(true, anim::type::instant);
 		experimental->entity()->setClickedCallback([=] {
 			showOther(Experimental::Id());
+		});
+	}
+}
+
+void SetupOptions(
+		not_null<Ui::VerticalLayout*> container,
+		Fn<void(Type)> showOther) {
+	if (showOther) {
+		const auto options = container->add(
+			object_ptr<Ui::SlideWrap<Button>>(
+				container,
+				CreateButton(
+					container,
+					rpl::single(qsl("Options")),
+					st::settingsButton,
+					{&st::settingsIconSettings, kIconGray})));
+
+		options->toggle(true, anim::type::instant);
+		options->entity()->setClickedCallback([=] {
+			showOther(ExOptions::Id());
 		});
 	}
 }
@@ -776,7 +798,19 @@ void Advanced::setupContent(not_null<Window::SessionController*> controller) {
 	if (!cAutoUpdate()) {
 		addUpdate();
 	}
+
 	addDivider();
+	AddSkip(content);
+	AddSubsectionTitle(content, rpl::single(qsl("Options")));
+	SetupOptions(content, [=](Type type) {
+		_showOther.fire_copy(type);
+	});
+	SetupExperimental(content, [=](Type type) {
+		_showOther.fire_copy(type);
+	});
+	AddSkip(content);
+	AddDivider(content);
+
 	SetupDataStorage(controller, content);
 	SetupAutoDownload(controller, content);
 	SetupSystemIntegration(controller, content, [=](Type type) {
@@ -806,10 +840,6 @@ void Advanced::setupContent(not_null<Window::SessionController*> controller) {
 	AddDivider(content);
 	AddSkip(content);
 	SetupExport(controller, content);
-	AddSkip(content);
-	SetupExperimental(content, [=](Type type) {
-		_showOther.fire_copy(type);
-	});
 
 	Ui::ResizeFitChild(this, content);
 }

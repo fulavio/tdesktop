@@ -1136,6 +1136,8 @@ PRIVATE
     settings/settings_main.h
     settings/settings_notifications.cpp
     settings/settings_notifications.h
+    settings/settings_options.cpp
+    settings/settings_options.h
     settings/settings_premium.cpp
     settings/settings_premium.h
     settings/settings_privacy_controllers.cpp

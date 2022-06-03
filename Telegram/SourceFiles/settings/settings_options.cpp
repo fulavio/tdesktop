@@ -1,11 +1,7 @@
 /*
-This file is part of Telegram Desktop,
-the official desktop application for the Telegram messaging service.
-
-For license and copyright information please follow this link:
-https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
+author: fulavio
 */
-#include "settings/settings_experimental.h"
+#include "settings/settings_options.h"
 
 #include "ui/boxes/confirm_box.h"
 #include "ui/wrap/vertical_layout.h"
@@ -16,17 +12,73 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "base/options.h"
 #include "core/application.h"
 #include "chat_helpers/tabbed_panel.h"
-#include "dialogs/dialogs_inner_widget.h"
-#include "history/history_widget.h"
 #include "lang/lang_keys.h"
 #include "media/player/media_player_instance.h"
-#include "webview/webview_embed.h"
 #include "window/window_peer_menu.h"
 #include "window/window_session_controller.h"
 #include "window/window_controller.h"
 #include "settings/settings_common.h"
 #include "styles/style_settings.h"
 #include "styles/style_layers.h"
+#include "chat_helpers/field_autocomplete.h"
+#include "data/keywords/data_keywords.h"
+
+namespace ExOption {
+
+const char kOptionStickerSendOnEnter[] = "sticker-send-on-enter";
+const char kOptionHideChoosingSticker[] = "hide-choosing-sticker";
+const char kOptionStickerKeywordsPrefix[] = "sticker-keywords-prefix";
+const char kOptionStickerQueryUseCount[] = "sticker-query-use-count";
+const char kOptionReplaceKeywords[] = "replace-keywords";
+
+base::options::toggle StickerSendOnEnter({
+    .id = kOptionStickerSendOnEnter,
+    .name = "Send sticker on enter",
+    .description = "Enviar o primeiro sticker dos resultados inline ao pressionar enter.",
+});
+
+base::options::toggle HideChoosingSticker({
+    .id = kOptionHideChoosingSticker,
+    .name = "Hide Choosing sticker action",
+    .description = "Esconde ação de escolhendo um sticker para os contatos.",
+});
+
+base::options::toggle StickerKeywordsPrefix({
+    .id = kOptionStickerKeywordsPrefix,
+    .name = "Allow sugesting stickers without prefix",
+    .description = "Permite a sugestão/busca de stickers sem utilizar o prefixo '!'",
+});
+
+base::options::toggle StickerQueryUseCount({
+    .id = kOptionStickerQueryUseCount,
+    .name = "Sticker query use count",
+    .description = "Ordena os stickers dos resultados com base no texto query.",
+});
+
+
+base::options::toggle ReplaceKeywords({
+    .id = kOptionReplaceKeywords,
+    .name = "Replace text messages with a keyword",
+    .description = "...",
+});
+
+bool stickerSendOnEnter() {
+	return StickerSendOnEnter.value();
+}
+bool hideChoosingSticker() {
+	return HideChoosingSticker.value();
+}
+bool stickerKeywordsPrefix() {
+	return StickerKeywordsPrefix.value();
+}
+bool stickerQueryUseCount() {
+	return StickerQueryUseCount.value();
+}
+bool replaceKeywords() {
+	return ReplaceKeywords.value();
+}
+
+} // namespace ExOption
 
 namespace Settings {
 namespace {
@@ -88,7 +140,7 @@ void AddOption(
 	}
 }
 
-void SetupExperimental(
+void SetupOptions(
 		not_null<Window::Controller*> window,
 		not_null<Ui::VerticalLayout*> container) {
 	AddSkip(container, st::settingsCheckboxesSkip);
@@ -132,39 +184,32 @@ void SetupExperimental(
 				? (reset->clicks() | rpl::to_empty)
 				: rpl::producer<>()));
 	};
-
-	addToggle(ChatHelpers::kOptionTabbedPanelShowOnClick);
-	addToggle(Window::kOptionViewProfileInChatsListContextMenu);
-	addToggle(Dialogs::kOptionCtrlClickChatNewWindow);
-	addToggle(Ui::GL::kOptionAllowLinuxNvidiaOpenGL);
-	addToggle(Media::Player::kOptionDisableAutoplayNext);
-	addToggle(Settings::kOptionMonoSettingsIcons);
-	addToggle(Webview::kOptionWebviewDebugEnabled);
-	addToggle(kOptionAutoScrollInactiveChat);
 	
-	addToggle(FAOptions::kOptionStickerSendOnEnter);
-	addToggle(FAOptions::kOptionHideChoosingSticker);
-	addToggle(FAOptions::kOptionStickerKeywordsPrefix);
+	addToggle(ExOption::kOptionStickerSendOnEnter);
+	addToggle(ExOption::kOptionHideChoosingSticker);
+	addToggle(ExOption::kOptionStickerKeywordsPrefix);
+	addToggle(ExOption::kOptionReplaceKeywords);
+	// addToggle(Keywords::kOptionStickerQueryUseCount);
 }
 
 } // namespace
 
-Experimental::Experimental(
+ExOptions::ExOptions(
 	QWidget *parent,
 	not_null<Window::SessionController*> controller)
 : Section(parent) {
 	setupContent(controller);
 }
 
-rpl::producer<QString> Experimental::title() {
-	return tr::lng_settings_experimental();
+rpl::producer<QString> ExOptions::title() {
+	return rpl::single(qsl("Options"));
 }
 
-void Experimental::setupContent(
+void ExOptions::setupContent(
 		not_null<Window::SessionController*> controller) {
 	const auto content = Ui::CreateChild<Ui::VerticalLayout>(this);
 
-	SetupExperimental(&controller->window(), content);
+	SetupOptions(&controller->window(), content);
 
 	Ui::ResizeFitChild(this, content);
 }
