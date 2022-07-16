@@ -50,3 +50,8 @@ stage
 *.*~
 .idea/
 cmake-build-debug/
+
+.vscode/
+build/
+Telegram/CMakeFiles
+Telegram/CMakeCache.txt
