@@ -38,6 +38,8 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include <QtGui/QWindow>
 #include <QtGui/QScreen>
 #include <QtWidgets/QApplication>
+#include <qpa/qplatformwindow.h>
+#include <qpa/qwindowsysteminterface.h>
 
 namespace Media {
 namespace View {
@@ -47,7 +49,11 @@ constexpr auto kPipLoaderPriority = 2;
 constexpr auto kMsInSecond = 1000;
 
 [[nodiscard]] bool IsWindowControlsOnLeft() {
-	return Platform::IsMac();
+	using Control = Ui::Platform::TitleControls::Control;
+	const auto controlsLayout = Ui::Platform::TitleControlsLayout();
+	return ranges::contains(controlsLayout.left, Control::Close)
+		|| (controlsLayout.left.size() > controlsLayout.right.size()
+			&& !ranges::contains(controlsLayout.right, Control::Close));
 }
 
 [[nodiscard]] QRect ScreenFromPosition(QPoint point) {
@@ -354,6 +360,18 @@ void PipPanel::init() {
 		// Workaround Qt's forced transient parent.
 		Ui::Platform::ClearTransientParent(widget());
 	}, rp()->lifetime());
+
+	rp()->sizeValue(
+	) | rpl::start_with_next([=](QSize size) {
+		handleResize(size);
+	}, rp()->lifetime());
+
+	QObject::connect(
+		widget()->windowHandle(),
+		&QWindow::screenChanged,
+		[=](QScreen *screen) {
+			handleScreenChanged(screen);
+		});
 }
 
 not_null<QWidget*> PipPanel::widget() const {
@@ -516,7 +534,7 @@ void PipPanel::setPositionOnScreen(Position position, QRect available) {
 		std::max(normalized.height(), minimalSize.height()));
 
 	// Apply maximal size.
-	const auto maximalSize = (_ratio.width() > _ratio.height())
+	const auto maximalSize = byWidth
 		? QSize(fit.width(), fit.width() * _ratio.height() / _ratio.width())
 		: QSize(fit.height() * _ratio.width() / _ratio.height(), fit.height());
 
@@ -566,6 +584,50 @@ void PipPanel::update() {
 
 void PipPanel::setGeometry(QRect geometry) {
 	widget()->setGeometry(geometry);
+}
+
+void PipPanel::handleResize(QSize size) {
+	if (!Platform::IsWayland()) {
+		return;
+	}
+
+	// Apply aspect ratio.
+	const auto max = std::max(size.width(), size.height());
+	const auto scaled = (_ratio.width() > _ratio.height())
+		? QSize(max, max * _ratio.height() / _ratio.width())
+		: QSize(max * _ratio.width() / _ratio.height(), max);
+
+	// Buffer can't be bigger than surface size.
+	const auto byWidth = (scaled.width() * size.height())
+		> (scaled.height() * size.width());
+	const auto normalized = (byWidth && scaled.width() > size.width())
+		? QSize(size.width(), size.width() * scaled.height() / scaled.width())
+		: (!byWidth && scaled.height() > size.height())
+		? QSize(
+			size.height() * scaled.width() / scaled.height(),
+			size.height())
+		: scaled;
+
+	setGeometry(QRect(widget()->geometry().topLeft(), normalized));
+	QWindowSystemInterface::handleGeometryChange<QWindowSystemInterface::SynchronousDelivery>(
+		widget()->windowHandle(),
+		widget()->windowHandle()->handle()->geometry());
+}
+
+void PipPanel::handleScreenChanged(QScreen *screen) {
+	const auto screenGeometry = screen->availableGeometry();
+	const auto minimalSize = _ratio.scaled(
+		st::pipMinimalSize,
+		st::pipMinimalSize,
+		Qt::KeepAspectRatioByExpanding);
+	const auto maximalSize = _ratio.scaled(
+		screenGeometry.width() / 2,
+		screenGeometry.height() / 2,
+		Qt::KeepAspectRatio);
+	widget()->setMinimumSize(minimalSize);
+	widget()->setMaximumSize(
+		std::max(minimalSize.width(), maximalSize.width()),
+		std::max(minimalSize.height(), maximalSize.height()));
 }
 
 void PipPanel::handleMousePress(QPoint position, Qt::MouseButton button) {
@@ -717,6 +779,10 @@ void PipPanel::processDrag(QPoint point) {
 	const auto clamped = (dragPart == RectPart::Center)
 		? ClampToEdges(screen, valid)
 		: valid.topLeft();
+	widget()->setMinimumSize(minimalSize);
+	widget()->setMaximumSize(
+		std::max(minimalSize.width(), maximalSize.width()),
+		std::max(minimalSize.height(), maximalSize.height()));
 	if (clamped != valid.topLeft()) {
 		moveAnimated(clamped);
 	} else {
