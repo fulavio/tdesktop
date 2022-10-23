@@ -19,6 +19,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "menu/menu_send.h" // SendMenu::FillSendMenu
 #include "chat_helpers/stickers_lottie.h"
 #include "chat_helpers/message_field.h" // PrepareMentionTag.
+#include "chat_helpers/tabbed_selector.h" // ChatHelpers::FileChosen.
 #include "mainwindow.h"
 #include "apiwrap.h"
 #include "api/api_chat_participants.h"
@@ -34,6 +35,7 @@ https://github.com/telegramdesktop/tdesktop/blob/master/LEGAL
 #include "ui/text/text_options.h"
 #include "ui/image/image.h"
 #include "ui/effects/path_shift_gradient.h"
+#include "ui/painter.h"
 #include "ui/ui_utility.h"
 #include "ui/cached_round_corners.h"
 #include "base/unixtime.h"
@@ -667,7 +669,7 @@ void FieldAutocomplete::updateFiltered(bool resetScroll) {
 			}
 		}
 	}
-	
+
 	rowsUpdated(
 		std::move(mrows),
 		std::move(hrows),
@@ -1250,7 +1252,7 @@ bool FieldAutocomplete::Inner::chooseAtIndex(
 				};
 			};
 
-			_stickerChosen.fire({ document, options, method, from() });
+			_stickerChosen.fire({ document, options, from() });
 			Keywords::SetKeywordCount(_parent->filter(), document);
 			return true;
 		}
@@ -1353,7 +1355,7 @@ void FieldAutocomplete::Inner::mouseReleaseEvent(QMouseEvent *e) {
 void FieldAutocomplete::Inner::showStickerSetBox(int index) {
 	if (_srows->empty() || index < 0 || index >= _srows->size())
 		return;
-		
+
 	const auto document = (*_srows)[index].document;
 
 	if (document->sticker() && document->sticker()->set) {
@@ -1409,7 +1411,7 @@ void FieldAutocomplete::Inner::contextMenuEvent(QContextMenuEvent *e) {
 			showStickerKeywords(index);
 		}, &st::settingsIconStickers);
 	}
-	
+
 	if (!_menu->empty()) {
 		_menu->popup(QCursor::pos());
 	}
@@ -1516,7 +1518,7 @@ void FieldAutocomplete::Inner::setupWebm(StickerSuggestion &suggestion) {
 }
 
 void FieldAutocomplete::Inner::setupGif(StickerSuggestion &suggestion) {
-	const auto document = suggestion.document; 
+	const auto document = suggestion.document;
 	const auto media = suggestion.documentMedia;
 
 	media->thumbnailWanted(Data::FileOrigin());
