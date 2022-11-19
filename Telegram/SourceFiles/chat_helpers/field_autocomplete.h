@@ -78,6 +78,7 @@ public:
 	};
 	struct MentionChosen {
 		not_null<UserData*> user;
+		QString mention;
 		ChooseMethod method = ChooseMethod::ByEnter;
 	};
 	struct HashtagChosen {
