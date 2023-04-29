@@ -141,10 +141,6 @@ void SetupExperimental(
 	addToggle(Settings::kOptionMonoSettingsIcons);
 	addToggle(Webview::kOptionWebviewDebugEnabled);
 	addToggle(kOptionAutoScrollInactiveChat);
-	
-	addToggle(FAOptions::kOptionStickerSendOnEnter);
-	addToggle(FAOptions::kOptionHideChoosingSticker);
-	addToggle(FAOptions::kOptionStickerKeywordsPrefix);
 }
 
 } // namespace

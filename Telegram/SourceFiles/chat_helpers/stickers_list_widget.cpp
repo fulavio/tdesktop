@@ -1553,9 +1553,9 @@ void StickersListWidget::showStickerSetBox(not_null<DocumentData*> document) {
 
 void StickersListWidget::showStickerKeywords(not_null<DocumentData*> document) {
 	if (document->sticker() && document->sticker()->set) {
-		controller()->show(Box(
+		_controller->show(Box(
 						EditKeywordsBox,
-						controller(),
+						_controller,
 						document));
 	}
 }
@@ -2661,7 +2661,9 @@ void StickersListWidget::removeMegagroupSet(bool locally) {
 			}
 			close();
 		}),
-		.cancelled = cancelled,
+		.cancelled = crl::guard(this, [this](Fn<void()> &&close) {
+			close();
+		}),
 	})));
 }
 
